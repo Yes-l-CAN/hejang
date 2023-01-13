@@ -102,9 +102,9 @@ int main() {
 		struct timeval timeout;
 		timeout.tv_sec =  5;
 		timeout.tv_usec = 500;
-		FD_ZERO(&reads);
-		FD_SET(serverSock_fd, &reads);
-		FD_SET(clientSock_fd, &reads);
+		// FD_ZERO(&reads);
+		// FD_SET(serverSock_fd, &reads);
+		// FD_SET(clientSock_fd, &reads);
 		cpy_reads = reads;
 		std::cout << "hi" << std::endl;
 
@@ -112,10 +112,7 @@ int main() {
 			소켓들을 관찰하다 이벤트 발생하면 
 		*/
 		int ret;
-		if(clientSock_fd == -1)
-			ret = select(MAXFD +1, &cpy_reads, NULL, NULL, &timeout);
-		else 
-			ret = select(clientSock_fd +1, &cpy_reads, NULL, NULL, &timeout);
+		ret = select(MAXFD +1, &cpy_reads, NULL, NULL, &timeout);
 
 		if(ret < 0){
 			std::cerr << "select error" << std::endl;
@@ -162,12 +159,13 @@ int main() {
 				} else {
 
 			//	do{
-					ret  = recv(clientSock_fd, buffer, buffSize, 0);
+					ret  = recv(i, buffer, buffSize, 0);
 					if(ret < 0) {
-						std::cerr << "couldn't recv client socket error" << std::endl;
+						std::cerr << "couldn't recv client socket error: " << errno << ": " << std::strerror(errno) << std::endl;
 						break;
 					} else if(ret == 0){
 						std::cerr << "receive client socket closed " << std::endl;
+						FD_CLR(i, &reads);
 						break;
 					}
 				
@@ -185,14 +183,12 @@ int main() {
 
 					printPacket((unsigned char *)buffer, ret);
 				}
-		}
+			}
 		//	}while (false);
 
 		//	close (clientSock_fd);
 	//		std::cout << "close client socket : " << clientSock_fd << std::endl;
 		}
-		if(ret == 0)
-			break;
 	}
 	if(serverSock_fd != -1) {
 		close(serverSock_fd);
