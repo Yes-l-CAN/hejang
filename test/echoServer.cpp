@@ -173,7 +173,8 @@ int main() {
 					std::cout << "Client Socket : " << clientSock_fd << std::endl;
 					std::cout << "read: " << ret << std::endl;
 
-					ret = send(clientSock_fd, buffer, ret, 0);
+					for(int j = 4; j <= clientSock_fd; j++)
+						ret = send(j, buffer, ret, 0);
 					if(ret < 0){
 						std::cerr << "couldn't send socket error" << std::endl;
 						break;
