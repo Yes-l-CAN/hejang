@@ -9,9 +9,11 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <fcntl.h>
 
 
 #define MPORT 4242
+
 #define MAXFD 1000
 #define MAXBUF 10
 
@@ -28,6 +30,8 @@ int main() {
 		std::cerr << "can not create socket" << std::endl;
 		return -1;
 	}
+	int option = true;
+	std::cout << "sockopt " << setsockopt( serverSock_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option) ) << std::endl;
 
 	/* socket의 통신 대상 지정을 위해 address 사용 -> struct ~*/
 	struct sockaddr_in	servAddr;
@@ -64,15 +68,29 @@ int main() {
 
 	std::cout << "listen" << MPORT << "port" << std::endl;
 
+	fcntl(serverSock_fd, F_SETFL, O_NONBLOCK);
+
+	/*
+		fd_set : 소켓 fd를 그룹짓기 위해 사용 -> FD_ 로 시작하는 매크로 함수들은 다 ㅎㅐ당 구조체 사용
+		FD_SETSIZE : fd 집합 크기 즉 해당 그룹에 포함 가능한 소켓의 최대 개수 의미
+		fd_mask (= long int): fd_set으로 그룹지을 때 각 소켓 fd 값 직접저장 아니라 해당 값을 비트 단위로 저장
+		NFDBITS: fd_mask 크기 * 8 => fd_mask 데이터 형의 비트 수
+		copy 해서 사용하는 이유는 select 함수가 원본을 바꿔버리기 때문! 
+
+	*/
 	fd_set	reads;
 	fd_set	cpy_reads;
-	FD_ZERO(&reads);
+	FD_ZERO(&reads);	// ft_set으로 선언된 변수 초기화 할 때 사용 모든 비트값 0으로 초기화
+	/*
+		fd_socket 값을 fd_set으로 ㅅ선언된 변수에 추가할 때 사용 
+		fd_socket 에 저장된 정수값을 고유값으로 판단 -> fd_set 변수에 해당 값에 할당된 비트를 1로 켜줌
+		결국 fd_set에서 열려있는(연결되어있는) fd에 대한 비트를 1로 켜줌
+	*/
 	FD_SET(serverSock_fd, &reads);
 	int maxFd = serverSock_fd;
-
-	struct timeval timeout;
-	timeout.tv_sec = 1;
-	timeout.tv_usec = 0;
+	// struct timeval timeout;
+	// timeout.tv_sec = 1;
+	// timeout.tv_usec = 0;
 
 	int clientSock_fd = -1;
 	struct sockaddr_in	clientAddr;
@@ -81,12 +99,24 @@ int main() {
 	char buffer[buffSize];
 
 	while(1){
-		timeout.tv_sec =  1;
-		timeout.tv_usec = 0;
-
+		struct timeval timeout;
+		timeout.tv_sec =  5;
+		timeout.tv_usec = 500;
+		FD_ZERO(&reads);
+		FD_SET(serverSock_fd, &reads);
+		FD_SET(clientSock_fd, &reads);
 		cpy_reads = reads;
+		std::cout << "hi" << std::endl;
 
-		int ret = select(maxFd + 1, &cpy_reads, NULL, NULL, &timeout);
+		/*
+			소켓들을 관찰하다 이벤트 발생하면 
+		*/
+		int ret;
+		if(clientSock_fd == -1)
+			ret = select(MAXFD +1, &cpy_reads, NULL, NULL, &timeout);
+		else 
+			ret = select(clientSock_fd +1, &cpy_reads, NULL, NULL, &timeout);
+
 		if(ret < 0){
 			std::cerr << "select error" << std::endl;
 			break;
@@ -94,51 +124,76 @@ int main() {
 			std::cout << "timeout?" << std::endl;
 			continue;
 		}
+		std::cout << "pass select" << std::endl;
 
-		if (FD_ISSET(serverSock_fd, &cpy_reads)){
-			unsigned int size = sizeof(clientAddr);
-			clientSock_fd = accept(serverSock_fd, (struct sockaddr *) &clientAddr, &size);
-			
-			if(clientSock_fd < 0){
-				std::cerr << "invalid client socket" << std::endl;
-				std::cerr << "ClientSocket : " << clientSock_fd << std::endl;
-				continue;
-			}
+		/*
+			Fd_set 변수에 특정 fd값이 설정되어있는지 확인할 때 사용
+			ex) socket fd가 5인 경우 fd_set에 5에 해당하는 비트가 1이 되어잇는지 확인
+			변화를 
+		*/
+		for(int i = 0; i < MAXFD + 1; i++){
+			if (FD_ISSET(i, &cpy_reads)){
+				if(i == serverSock_fd){
+					unsigned int size = sizeof(clientAddr);
+				/*
+					요청이 들어온 client에 대한 새로운 socket fd 만들어줌 -> 하나의 값으로 두 개의 socket fd 갖...?
+					원래거(fd)-> 기다리던 포트에서 계속 listen()
+					새거(fd) -> send() recv() 준비 되도록
+					int accept(int sockfd, void *addr, int *addrlen);
+					sockfd: listen() 하고 있는 소켓 기술자
+					addr: 로컨 struct sockaddr_in 포인터 (접속에 관한 정보 -> 어느 호스트에서 어느 포트이용 접속하려 하는지)
+					addrlen: 해당 정수에 struct sockaddr_in 크기 미리 지정되어야 
 
-			std::cout << "accept new client! " << std::endl;
-			std::cout <<  "ClientSocket : " << clientSock_fd << std::endl;
+				*/
+					clientSock_fd = accept(serverSock_fd, (struct sockaddr *) &clientAddr, &size);
+					std::cout << "clientfd  ::: " << clientSock_fd  << std::endl;
+					FD_SET(clientSock_fd, &reads);
+					// for (i = 0; i < 10; i++)
+					// 	std::cout << "fd_set bits ::" <<  std::bitset<32>(reads.fds_bits[i]) << std::endl;
+					
+					if(clientSock_fd < 0){
+						std::cerr << "invalid client socket" << std::endl;
+						std::cerr << "ClientSocket : " << clientSock_fd << std::endl;
+						continue;
+					}
 
-			while(1){
-				ret  = recv(clientSock_fd, buffer, buffSize, 0);
-				if(ret < 0) {
-					std::cerr << "couldn't recv client socket error" << std::endl;
-					break;
-				} else if(ret == 0){
-					std::cerr << "receive client socket closed " << std::endl;
-					break;
+					std::cout << "accept new client! " << std::endl;
+					std::cout <<  "ClientSocket : " << clientSock_fd << std::endl;
+				} else {
+
+			//	do{
+					ret  = recv(clientSock_fd, buffer, buffSize, 0);
+					if(ret < 0) {
+						std::cerr << "couldn't recv client socket error" << std::endl;
+						break;
+					} else if(ret == 0){
+						std::cerr << "receive client socket closed " << std::endl;
+						break;
+					}
+				
+					std::cout << "receive message!!" << std::endl;
+					std::cout << "Client Socket : " << clientSock_fd << std::endl;
+					std::cout << "read: " << ret << std::endl;
+
+					ret = send(clientSock_fd, buffer, ret, 0);
+					if(ret < 0){
+						std::cerr << "couldn't send socket error" << std::endl;
+						break;
+					} 
+					std::cout << "send to client socket : " << clientSock_fd << std::endl;
+					std::cout << "write: " << ret << std::endl;
+
+					printPacket((unsigned char *)buffer, ret);
 				}
-			
-				std::cout << "receive message!!" << std::endl;
-				std::cout << "Client Socket : " << clientSock_fd << std::endl;
-				std::cout << "read: " << ret << std::endl;
-
-			//	ret = send(clientSock_fd, buffer, ret, 0);
-				if(ret < 0){
-					std::cerr << "couldn't send socket error" << std::endl;
-					break;
-				} 
-				std::cout << "send to client socket : " << clientSock_fd << std::endl;
-				std::cout << "write: " << ret << std::endl;
-
-				printPacket((unsigned char *)buffer, ret);
-
-			} //while (false);
+		}
+		//	}while (false);
 
 		//	close (clientSock_fd);
-			std::cout << "close client socket : " << clientSock_fd << std::endl;
+	//		std::cout << "close client socket : " << clientSock_fd << std::endl;
 		}
+		if(ret == 0)
+			break;
 	}
-
 	if(serverSock_fd != -1) {
 		close(serverSock_fd);
 	}

@@ -24,6 +24,7 @@ int main(int argc, char** argv)
     }
 
     sock = socket(PF_INET, SOCK_STREAM, 0);
+    printf("socket from client: %d\n", sock);
     if (sock == -1)
         error_handling("socket() error\n");
 
@@ -32,10 +33,14 @@ int main(int argc, char** argv)
     serv_addr.sin_addr.s_addr = inet_addr(argv[1]);
     serv_addr.sin_port = htons(atoi(argv[2]));
 
+    printf("before connect\n");
+    printf("ccccccc\n");
     if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) == -1)
         error_handling("connect() error!\n");
-    else
-        puts("Connected!!\n");
+    printf("connect");
+    printf("after connect");
+
+    puts("Connected!!\n");
 
     while (1)
     {
@@ -44,9 +49,9 @@ int main(int argc, char** argv)
             printf("The string is %s\n", result);
         if (!strcmp(result, "Q\n"))
             break;
-        str_len = send(sock, result, strlen(result), MSG_OOB);
+       str_len = send(sock, result, strlen(result), MSG_OOB);
         printf("socketfd : %d\n", sock);
-       // recv(sock, result, BUF_SIZE - 1);
+      //  recv(sock, result, BUF_SIZE, 0);
         result[str_len] = 0;
         printf("result from server : %s(end)\n", result);
     }
