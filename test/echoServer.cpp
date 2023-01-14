@@ -179,12 +179,15 @@ int main()
                     {
                         std::cerr << "couldn't recv client socket error: " << errno << ": " << std::strerror(errno)
                                   << std::endl;
+                        FD_CLR(i, &reads);
+                        close(i);
                         break;
                     }
                     else if (ret == 0)
                     {
                         std::cerr << "receive client socket closed " << std::endl;
                         FD_CLR(i, &reads);
+                        close(i);
                         break;
                     }
 
