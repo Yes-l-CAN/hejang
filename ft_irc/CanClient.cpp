@@ -60,3 +60,16 @@ std::string CanClient::getRealname(void) const
 	return (this->username);
 }
 
+void  CanClient::addChannelElement(const std::string key, const CanChannel *pNewChannel){
+	std::pair<iterator, bool> ret;
+	ret = this->channelList.insert({key, pNewChannel});
+	if (ret.second == false)
+	{
+		throw (CanClient::addChannelException());
+	}
+}
+
+virtual const char*	CanClient::addChannelException::what() const throw()
+{
+	return "";
+}

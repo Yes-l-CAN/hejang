@@ -18,3 +18,23 @@ CanCommand& CanCommand::operator=(const CanCommand& obj){
 CanCommand::~CanCommand(){
 
 }
+
+void	CanCommand::Pass(std::vector<std::string> argv){
+
+}
+
+int		CanCommand::Nick(std::vector<std::string> argv){
+
+}
+
+int		CanCommand::User(std::vector<std::string> argv){
+
+}
+
+void	CanCommand::Ping(std::vector<std::string> argv){
+
+}
+
+void	CanCommand::Pong(std::vector<std::string> argv){
+
+}

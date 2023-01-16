@@ -20,24 +20,25 @@
 #include <map>
 
 #include "CanClient.hpp"
-
-#define MPORT 4242
+#include "CanCommunication.hpp"
 
 #define MAX_FD 1000
 #define MAXBUF 10
 
 
-class CanServer
+class CanServer : public CanCommunication
 {
 private:
-
+	int	port;
+	std::string	password;
+	
 	int socketFd;
 	struct sockaddr_in addr;
 
 	fd_set reads;
 	fd_set copyReads;
 
-	int		maxFd;
+	int			maxFd;
 	
 	std::map<int, CanClient*>	clientList;
 	
@@ -46,7 +47,8 @@ public:
 	CanServer(const CanServer& obj);
 	CanServer& operator=(const CanServer& obj);
 	~CanServer();
-	
+
+	void setServer(char	*port, char	*pw);
 	void s_On();
 	// void serverOff();
 	
@@ -60,6 +62,8 @@ public:
 	// utils
 	void setFdSet();
 	void findFd();
+
+	void cSend(int clientFd);
 
 	class socketCreateException: public std::exception{
 		virtual const char*	what() const throw();
@@ -83,6 +87,11 @@ public:
 	{
 		virtual const char* what() const throw();
 	};
+
+	class invalidPortException: public std::exception
+	{
+		virtual const char* what() const throw();
+	}
 
 };
 

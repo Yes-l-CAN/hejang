@@ -54,6 +54,13 @@ If the client sends a USER command after the server has successfully received a 
 [<server>] <token>
 ```
 
+client, server 양측에서 모두 사용 | client <-> Server 서로 연결 상태 및 연결 지연 시간 확인
+token 은 빈 문자열이 되면 안 된다.
+<during connection registration>
+client -x-> server(may accept) 
+server -o-> client (must reply)
+
+
 ### PONG
 ```cpp
 USER 
@@ -61,21 +68,43 @@ USER
 PING명령어에 대한 응답.
 서버는 반드시 <server> 파라미터를 보내야하고, clients 는 반드시 이를 무시해야 한다.
 
+*** PING 과 PONG은 같은 Token을 사용해야 한다 ***
+
 ### QUIT
 ```cpp
 USER 
+QUIT [<reason>]
+
+// msg example
+:dan-!d@localhost QUIT :Quit: Bye for now!
+    ; dan- is exiting the network with
+        the message: "Quit: Bye for now!"
 ```
-PING명령어에 대한 응답.
-서버는 반드시 <server> 파라미터를 보내야하고, clients 는 반드시 이를 무시해야 한다.
+client와 server간의 연결 종료
+server는 ERROR 메세지 회신 후 client에 대한 연결 close
+일반적으로 메세지는 quit을 실행한 사용자와 같은 채널을 사용하는 client에만 발송
+netsplit발생하는 경우 => 일반적인 QUIT 메세지와 동일한 방식으로 끊긴 client에 대한 메세지 생성
+
+<!-- PING명령어에 대한 응답.
+서버는 반드시 <server> 파라미터를 보내야하고, clients 는 반드시 이를 무시해야 한다. -->
 
 ### ERROR
 ```cpp
-USER 
+ERROR <reason>
 ```
-PING명령어에 대한 응답.
-서버는 반드시 <server> 파라미터를 보내야하고, clients 는 반드시 이를 무시해야 한다.
+server->client 
+clinet의 연결을 종료하기 전에 fetal error을 알리기 위해
+fetal error 용으로만 사용! regular error의 경우 numeric 혹은 IRCv3 standard replies framework 사용 
+<!-- PING명령어에 대한 응답.
+서버는 반드시 <server> 파라미터를 보내야하고, clients 는 반드시 이를 무시해야 한다. -->
 
 ---
 [Channel Operations]
 채널과 클라이언트 사이에서 사용되는 명령어
 ### JOIN
+```cpp
+JOIN <channel>{, <channel>} [<key>{, <key>}]
+```
+client 가 해당 <channel> 에 참여하고자 할 때 사용.
+ 각 채널(param)은 지정된 키(param)를 사용
+client 가 채널에 접혹하는 동안 

@@ -6,10 +6,13 @@
 #include <map>
 #include "CanClient.hpp"
 
+class CanClient;
+
 class CanChannel
 {
 
     private:
+        std::string                 key;
         std::map<int, CanClient*>	clientList;
     public:
         CanChannel();
@@ -20,7 +23,6 @@ class CanChannel
         const std::map<int, CanClient*>& getClientList(void) const;
         void addClientElement(const int fd, const CanClient *pNewClient);
         void deleteClientElement(const int fd);
-    
 
     class addClientException: public std::exception
     {

@@ -43,6 +43,13 @@ CanServer& CanServer::operator=(const CanServer& obj){
 	return (*this);
 }
 
+void CanServer::setServer(char *port, char *pw){
+	this->port = static_cast<int>(port);
+	if(this->port < 1025 || this->port > 65536)
+		throw(invalidPortException());
+	this->password = static_cast<std::string>(pw);
+}
+
 void CanServer::s_On(){
 	try{
 		s_Socket();
@@ -138,12 +145,23 @@ void CanServer::s_Accept()
 	CanClient *temp = new CanClient(&clientAddr);
 	clientList.insert(std::make_pair(clientSockFd, temp)); 
 }
+
 // utils
 void CanServer::setFdSet()
 {
     fd_set* reads_addr = &this->reads;
     FD_ZERO(reads_addr);
     FD_SET(this->socketFd, reads_addr);
+}
+
+void CanServer::cSend(int clientFd, CanChannel *channel){
+	int	ret;
+
+	for(map<int, CanClient>::iterator it = channel.begin(); it != channel.end(); it++){
+		send(it->socketFd, this->buffer, this->buffer, 0);
+		if(ret < 0)
+			throw(sendSocketError());
+	}
 }
 
 // exception
@@ -167,3 +185,6 @@ const char	*CanServer::acceptException::what() const throw() {
 	return ("Accept error");
 }
 
+const char	*CanServer::invalidPortException::what() const throw() {
+	return ("invalid Port Num");
+}
